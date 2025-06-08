@@ -1,5 +1,5 @@
 
-<img src="https://raw.githubusercontent.com/Katayath-Sai-Kiran/curved_text_codespark/main/assets/banners/banner.png" alt="Curved Text Codespark" />
+<img src="https://raw.githubusercontent.com/Katayath-Sai-Kiran/curved_text_codespark/main/assets/banner.png" alt="Curved Text Codespark" />
 
 # 🌀 curved_text_codespark
 
