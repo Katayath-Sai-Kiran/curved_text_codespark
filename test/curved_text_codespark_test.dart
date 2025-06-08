@@ -50,7 +50,8 @@ void main() {
       expect(tappedIndex, 0);
     });
 
-    testWidgets('applies custom style via styleBuilder', (WidgetTester tester) async {
+    testWidgets('applies custom style via styleBuilder',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(

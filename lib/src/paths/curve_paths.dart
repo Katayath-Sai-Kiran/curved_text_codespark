@@ -20,9 +20,7 @@ class CurvePaths {
   }) {
     return Path()
       ..addOval(Rect.fromCenter(
-          center: center,
-          width: radiusX * 2,
-          height: radiusY * 2));
+          center: center, width: radiusX * 2, height: radiusY * 2));
   }
 
   /// Generates a spiral path starting from [center]
