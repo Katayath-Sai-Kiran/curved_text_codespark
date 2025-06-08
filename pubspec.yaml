@@ -1,0 +1,36 @@
+name: curved_text_codespark
+description: >
+  Render text along circular, spiral, wave, elliptical, or custom paths with full animation, interactivity, and styling. 
+  A modern curved text widget for Flutter.
+
+version: 0.0.1
+
+homepage: https://github.com/Katayath-Sai-Kiran/curved_text_codespark
+repository: https://github.com/Katayath-Sai-Kiran/curved_text_codespark
+issue_tracker: https://github.com/Katayath-Sai-Kiran/curved_text_codespark/issues
+documentation: https://github.com/Katayath-Sai-Kiran/curved_text_codespark#readme
+publish_to: https://pub.dev
+
+environment:
+  sdk: ">=3.2.0 <4.0.0"
+  flutter: ">=3.13.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  assets:
+    - assets/banners/banner.png
+
+topics:
+  - curved-text
+  - path-text
+  - text-effects
+  - text-animation
+  - interactive-text
