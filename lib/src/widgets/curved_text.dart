@@ -1,44 +1,19 @@
 import 'dart:math';
-import 'dart:ui';
 
+import 'package:curved_text_codespark/curved_text_codespark.dart';
 import 'package:flutter/material.dart';
-
-import '../../curved_text_codespark.dart';
 
 /// Signature for per-character tap callbacks.
 typedef CharTapCallback = void Function(int index, String char);
 
-/// A highly customizable widget to render text along various curves,
-/// such as circular, elliptical, spiral, wave, Bézier, and custom paths.
-///
-/// Supports:
-/// - Per-character styling
-/// - Interactive tap detection on characters
-/// - Smooth entrance animation
-/// - Full customization via [CurvedTextOptions]
 class CurvedText extends StatefulWidget {
-  /// The text to render along the curve.
   final String text;
-
-  /// Options for customizing curve type, radius, direction, etc.
   final CurvedTextOptions options;
-
-  /// Callback triggered when a character is tapped.
   final CharTapCallback? onCharTap;
-
-  /// Duration of the entrance animation.
   final Duration animationDuration;
-
-  /// Curve for entrance animation.
   final Curve animationCurve;
-
-  /// Optional builder to define per-character style dynamically.
-  ///
-  /// This allows for different styles per index/character.
-  /// If null, [options.defaultTextStyle] is used.
   final TextStyle Function(int index, String char)? styleBuilder;
 
-  /// Creates a curved text widget with rich customization and animation.
   const CurvedText({
     super.key,
     required this.text,
@@ -58,13 +33,11 @@ class _CurvedTextState extends State<CurvedText>
   late final AnimationController _animationController;
   late final Animation<double> _animation;
 
-  /// Stores layout metadata for each character to support hit testing.
   final List<_CharLayout> _charLayouts = [];
 
   @override
   void initState() {
     super.initState();
-
     _animationController = AnimationController(
       vsync: this,
       duration: widget.animationDuration,
@@ -73,7 +46,6 @@ class _CurvedTextState extends State<CurvedText>
       parent: _animationController,
       curve: widget.animationCurve,
     );
-
     _animationController.forward();
   }
 
@@ -85,10 +57,9 @@ class _CurvedTextState extends State<CurvedText>
 
   void _handleTapDown(TapDownDetails details, Size size) {
     final tapPos = details.localPosition;
+    const hitRadius = 20.0;
 
-    // Loop through all character layouts to find which one was tapped
     for (final layout in _charLayouts) {
-      const hitRadius = 20.0; // Expand hitbox for touch devices
       if ((layout.position - tapPos).distance <= hitRadius) {
         widget.onCharTap?.call(layout.index, layout.char);
         break;
@@ -96,200 +67,100 @@ class _CurvedTextState extends State<CurvedText>
     }
   }
 
+  void _updateCharLayout(int index, String char, Offset position) {
+    _charLayouts.add(
+      _CharLayout(index: index, char: char, position: position, angle: 0),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return GestureDetector(
-          onTapDown: (details) => _handleTapDown(details, constraints.biggest),
-          child: CustomPaint(
-            size: Size(constraints.maxWidth, constraints.maxHeight),
-            painter: _InteractiveCurvedTextPainter(
-              text: widget.text,
-              options: widget.options,
-              animationValue: _animation.value,
-              styleBuilder: widget.styleBuilder,
-              charLayoutsCallback: (layouts) {
-                // Update layout metadata for future hit detection
-                _charLayouts
-                  ..clear()
-                  ..addAll(layouts);
-              },
-            ),
+    final size = 2 * widget.options.radius;
+    _charLayouts.clear();
+
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTapDown: (details) => _handleTapDown(details, Size(size, size)),
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: CustomPaint(
+          painter: InteractiveCurvedTextPainter(
+            text: widget.text,
+            options: widget.options,
+            styleBuilder: widget.styleBuilder,
+            onCharTap: widget.onCharTap,
+            onCharLayout: _updateCharLayout,
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
 
-/// A [CustomPainter] that draws curved text and reports character positions for interactivity.
-class _InteractiveCurvedTextPainter extends CustomPainter {
+class InteractiveCurvedTextPainter extends CustomPainter {
   final String text;
   final CurvedTextOptions options;
-  final double animationValue;
   final TextStyle Function(int index, String char)? styleBuilder;
-  final void Function(List<_CharLayout>) charLayoutsCallback;
+  final void Function(int index, String char)? onCharTap;
+  final void Function(int index, String char, Offset position)? onCharLayout;
 
-  _InteractiveCurvedTextPainter({
+  InteractiveCurvedTextPainter({
     required this.text,
     required this.options,
-    required this.animationValue,
-    required this.styleBuilder,
-    required this.charLayoutsCallback,
+    this.styleBuilder,
+    this.onCharTap,
+    this.onCharLayout,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final path = _generatePath(size);
-    final pathMetrics = path.computeMetrics().toList();
-    if (pathMetrics.isEmpty) return;
+    if (text.isEmpty) return;
 
-    final totalLength = pathMetrics.fold(0.0, (sum, pm) => sum + pm.length);
-    final textToRender = options.rtl ? text.split('').reversed.join() : text;
+    final radius = options.radius;
+    final center = Offset(size.width / 2, size.height / 2);
+    canvas.translate(center.dx, center.dy);
 
-    final textPainter = TextPainter(
-      textDirection: options.rtl ? TextDirection.rtl : TextDirection.ltr,
-    );
+    final isClockwise = options.clockwise;
+    final spacing = options.spacing;
+    final direction = options.rtl ? -1 : 1;
 
-    double totalTextWidth = 0;
-    List<double> charWidths = [];
+    final characters = text.characters.toList();
+    final anglePerChar = spacing * pi / 180;
 
-    // Measure each character width individually
-    for (final char in textToRender.characters) {
-      final style = styleBuilder?.call(textToRender.indexOf(char), char) ??
-          options.defaultTextStyle;
-      textPainter.text = TextSpan(text: char, style: style);
-      textPainter.layout();
-      charWidths.add(textPainter.width);
-      totalTextWidth += textPainter.width + options.spacing;
-    }
-    totalTextWidth -= options.spacing;
+    final totalAngle = anglePerChar * characters.length;
+    final startAngle = isClockwise ? -totalAngle / 2 : totalAngle / 2;
 
-    // Center text on path
-    double offsetOnPath = (totalLength - totalTextWidth) / 2;
-    double currentPos = offsetOnPath;
+    for (int i = 0; i < characters.length; i++) {
+      final char = characters[i];
+      final angle = startAngle + (anglePerChar * i * direction);
+      final dx = radius * cos(angle);
+      final dy = radius * sin(angle);
 
-    final List<_CharLayout> layouts = [];
-
-    for (int i = 0; i < textToRender.length; i++) {
-      final char = textToRender[i];
-      final charWidth = charWidths[i];
-      final charCenterPos = currentPos + charWidth / 2;
-
-      final posData = _extractPositionOnPath(pathMetrics, charCenterPos);
-      if (posData == null) continue;
-
-      final charPos = posData.position;
-      final tangentAngle = posData.tangent;
+      final positionInParent = Offset(dx + center.dx, dy + center.dy);
+      onCharLayout?.call(i, char, positionInParent);
 
       canvas.save();
+      canvas.translate(dx, dy);
+      canvas.rotate(angle + pi / 2);
 
-      // Add animation offset & opacity
-      final opacity = animationValue.clamp(0.0, 1.0);
-      final offsetAnim = 20 * (1 - animationValue);
-      final normal = Offset(-sin(tangentAngle), cos(tangentAngle));
-      final animatedPos = charPos + normal * offsetAnim;
+      final textStyle = styleBuilder?.call(i, char) ?? options.defaultTextStyle;
+      final painter = TextPainter(
+        text: TextSpan(text: char, style: textStyle),
+        textDirection: TextDirection.ltr,
+      )..layout();
 
-      canvas.translate(animatedPos.dx, animatedPos.dy);
-      canvas.rotate(
-        options.clockwise ? tangentAngle : tangentAngle + pi,
-      );
+      final offset = Offset(-painter.width / 2, -painter.height / 2);
+      painter.paint(canvas, offset);
 
-      final style = styleBuilder?.call(i, char) ?? options.defaultTextStyle;
-
-      final tp = TextPainter(
-        text: TextSpan(
-          text: char,
-          style: style.copyWith(color: style.color?.withOpacity(opacity)),
-        ),
-        textDirection: options.rtl ? TextDirection.rtl : TextDirection.ltr,
-      );
-      tp.layout();
-      tp.paint(canvas, Offset(-charWidth / 2, -tp.height / 2));
       canvas.restore();
-
-      layouts.add(
-        _CharLayout(
-          index: i,
-          char: char,
-          position: charPos,
-          angle: tangentAngle,
-        ),
-      );
-
-      currentPos += charWidth + options.spacing;
     }
-
-    // Send back character positions for interaction (taps)
-    charLayoutsCallback(layouts);
   }
 
   @override
-  bool shouldRepaint(covariant _InteractiveCurvedTextPainter oldDelegate) {
-    return oldDelegate.text != text ||
-        oldDelegate.options != options ||
-        oldDelegate.animationValue != animationValue;
-  }
-
-  /// Get position and angle at a specific distance along the path.
-  _PathPosition? _extractPositionOnPath(
-      List<PathMetric> metrics, double distance) {
-    double accumulated = 0;
-    for (final metric in metrics) {
-      if (distance <= accumulated + metric.length) {
-        final localDistance = distance - accumulated;
-        final tangent = metric.getTangentForOffset(localDistance);
-        if (tangent == null) return null;
-        return _PathPosition(
-            position: tangent.position, tangent: tangent.angle);
-      }
-      accumulated += metric.length;
-    }
-    return null;
-  }
-
-  /// Generate the path based on selected [CurveType].
-  Path _generatePath(Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    switch (options.curveType) {
-      case CurveType.circular:
-        return CurvePaths.circular(center: center, radius: options.radius);
-      case CurveType.elliptical:
-        return CurvePaths.elliptical(
-          center: center,
-          radiusX: options.radius,
-          radiusY: options.radius * 0.6,
-        );
-      case CurveType.spiral:
-        return CurvePaths.spiral(
-          center: center,
-          turns: options.spiralTurns.toInt(),
-          maxRadius: options.radius,
-        );
-      case CurveType.wave:
-        return CurvePaths.wave(
-          start: Offset(0, center.dy),
-          end: Offset(size.width, center.dy),
-          amplitude: options.waveAmplitude,
-          frequency: 1,
-        );
-      case CurveType.bezier:
-        return Path()
-          ..moveTo(center.dx - options.radius, center.dy)
-          ..quadraticBezierTo(
-            center.dx,
-            center.dy - options.radius,
-            center.dx + options.radius,
-            center.dy,
-          );
-      case CurveType.customPath:
-        return options.customPath ?? Path();
-    }
-  }
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
-/// Internal data structure representing character position and metadata.
 class _CharLayout {
   final int index;
   final String char;
@@ -302,12 +173,4 @@ class _CharLayout {
     required this.position,
     required this.angle,
   });
-}
-
-/// Represents a position and angle on a given path.
-class _PathPosition {
-  final Offset position;
-  final double tangent;
-
-  _PathPosition({required this.position, required this.tangent});
 }

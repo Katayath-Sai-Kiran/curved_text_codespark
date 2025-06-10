@@ -28,10 +28,10 @@
 
 ## 📸 Preview
 
-> *(Include GIFs/Screenshots here)*  
-> _You can show: Circular text, Wave animation, Spiral logo-style text, Tap effect._
+<img src="https://raw.githubusercontent.com/Katayath-Sai-Kiran/curved_text_codespark/main/assets/demo.gif" alt="Curved Text Codespark Demo" width="300" />
+<img src="https://raw.githubusercontent.com/Katayath-Sai-Kiran/curved_text_codespark/main/assets/300X650-01.png" alt="Curved Text Codespark Demo" width="300" />
 
----
+
 
 ## 🚀 Getting Started
 
