@@ -1,3 +1,5 @@
+// ignore_for_file: unused_field
+
 import 'dart:math';
 
 import 'package:curved_text_codespark/curved_text_codespark.dart';

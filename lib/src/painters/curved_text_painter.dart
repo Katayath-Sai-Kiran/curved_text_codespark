@@ -49,7 +49,6 @@ class CurvedTextPainter extends CustomPainter {
 
     // Render each character on path
     double currentPos = offsetOnPath;
-    final paint = Paint();
     for (int i = 0; i < textToRender.length; i++) {
       final char = textToRender[i];
       final charWidth = charWidths[i];
